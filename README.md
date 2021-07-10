@@ -1,116 +1,93 @@
-# Project_FIFA_MoneyBall
+# OBJECTIVE OF THE PROJECT
 
-![photo](https://github.com/Ironhack-Data-0621-Remote/Project_FIFA_MoneyBall/blob/main/Images/photo.jpg)
+Purpose of this project is to run an end-to-end linear regresion in order to predict the market value of the players based on different dependent variables stored in the dataset fifa21_male2.csv in the data folder.
 
-## The challenge
+# DATASET EXPLORATION
+While exploring the dataset, I have tried to answer three particular questions listed below
 
-Perform an end-to-end analysis putting into practice what you have learned so far. You will apply statistical or machine learning techniques and present your results to the class.
+1) Which strikers (top 3) below 30 y.o. in France have the best contract (wage) based on their attacking stats
+2) Are left foot players more skilled than right foot players as it is usually said by experts ?
+3) Which striker nationality has the highest likelihood to score most if I have never seen that striker playing ?
 
-### Possible Outcomes
+In order to answer question 1, I created a variable named best_contract which is basically filtering the original dataframe with 
+* column age below 30 y.o.
+* nationality set to France
+* best position set to striker
+* attacking stats below 306, which is the 3rd interquartile range because 
 
-- Rank players by market value.
-  
-- Highlight the top players for their outstanding performances over a discrete season.
-- Decide when to transfer a player.
-- Decide the best replacement for a transferred player.
+We want to exclude striker having attacking stats higher than 306 since they are world class players
+After filtering my dataframe, I am printing the 3 results sorted by wage in descending order and the conclusion is that french strikers A.Mendy, F.Ayé and M.Nzola are the three most paid strikers with lowest attacking stats.
 
-> You might suggest your own outcomes. Check with instructional staff before committing to a new option.
+In order to answer question 2, I have simply used a groupby function based on foot variable and queried the mean skills in column.
+I can confirm the hypothesis that left foot players are more skilled than right foot players (283 vs 261 for right foot)
 
-## Objectives
+For the third question, I created a variable which is grouping by 5 nationalities having the highest means in attacking stats and then sorting it by attacking stats in descending order. Before that I queried to exclude countries which have less than 40 strikers.
+The conclusion is that Morocco, Algeria, Brazil, Ivory Coast and Serbia are countries having strikers with best attacking stats. Thus, as a scoot, I would be more enclined to recruit a striker of these 5 countries, because we could assume that attacking is in their roots.
 
-- Ask interesting and thoughtful questions and find the data to answer them.
-  
-- Focus on improving in areas that are hard for you or learning more about something with which you feel comfortable.
-- Apply the statistical and machine learning techniques we have learned.
-- Create useful and clear graphs.
-- Present your insights in a thoughtful, clear, and accurate way.
+# DATA CLEANING
+In order to perform a linear regression properly, there are some preliminary steps to clean the orignal dataframe. I will list below the steps I undertook.
 
-## Dataset
+First things first, I have decided to drop columns which I think did not have any impact on the market value of a player. The decision was made based on my domain knowldege. The variables I decided to keep and the operations I may have performed for each are listed below
 
-In this project, you will use the provided [**fifa21_male2.csv**](https://github.com/Ironhack-Data-0621-Remote/Project_FIFA_MoneyBall/tree/main/Data) dataset.
+* age
+* ova
+* bp
+* pot
+* release_clause
+* height: 
+  * replaced " character by blank
+  * converted inches into cm using a lambda function
+  * converted into integer
+* wage: 
+  * replaced € signs by blank, 
+  * replacing K and M by *1000 and *1000000
+  * converted to float
+* release_clause: 
+  * replaced € signs by blank, 
+  * replacing K and M by *1000 and *1000000
+  * converted to float
+* pac
+* sho
+* dri: dropped after correlation matrix step
+* pas
+* def
+* phy
+* hits: 
+  * replacing K and M by *1000 and *1000000
+  * converted to float
+* contract_end:
+  * variable created based on contract original variable
+  * splitted contract variable into two and kept whatever came after character ~ and stored it as variable "contract_end" in a new column. Any string before ~ was stored in a new column as variable "contract_start"
+  * converted it to datetime format
+  * A lot of strings appeared in the contract_start column. to remove them and keep only date formats here is what I did:
+    * drop all on-loan players since I believe that market  for on-loan players is really different than the one for regular contract players (I did that because reason why strings appeared in contract_start column was due to on-loan players)
+    * drop any string that appeared less than 20 times in the contract_start column
+    * remove all free players from contract_start column
+  * remove all players which had a contract ending prior to 2021 - which means droping players retired as we do not need any market value for these players
+* value: 
+  * replaced € signs by blank, 
+  * replacing K and M by *1000 and *1000000
+  * converted to float
+  * removed players having a value = 0
 
-[Here](https://www.kaggle.com/ekrembayar/fifa-21-complete-player-dataset?select=fifa21_male2.csv) details about the dataset can be found here as well. 
+After cleaning columns, our database dfd is 13 198 rows long compared to 17 125 at the begining. I dropped 23% of my initial dataset
 
-This data set includes:
+# EDA
+After plotting distribution plots, I noticed that data were not normalized. 
 
-1. **EA Sports FIFA 19 Game** data:
+I plotted correlation matrix to see whether or not some variables were correlated between each other.
 
-    |   |   |
-    |---|---|
-    |  Player Name | Club of the Player   |
-    | League  | Position  |
-    | Pace  |  Shooting |
-    |  Passing | Dribbling  |
-    | Defending|Physical|
-    |||
+I found out that variables dri and pas were highly correlated (0.83) so I decided to drop dri since it is less correlated to value than pas
 
+# FEATURE ENGINEERING
 
-1. **Transfermarkt** extra info by player:
+Next step, I plotted boxplots in order to visualize outliers in the variables
 
-    |   |   |
-    |---|---|
-    |  Date of Birth| Nationality   |
-    | Height  | Foot  |
-    | Day Joined the current club  |  Day of Contract End |
-    |  Market Value of the Player |  |
-    |||
+I defined a function to remove outliers on numerical columns based on the interquartile range * +-2
 
+Then I had to encode my categorical variables so they can be part of the linear regression model
 
-2. **Instagram and Facebook** data by player:
+Last step of this section was to split dataset between features and target in order to perform normalization
 
-   - Number of followers on Instagram
-   - Number of likes on Facebook of the club in which the player has a contract
-
-4. **ESPN FC** data from the past 5 years performance of each player
-
-   - **GS:** Games Started
-   - **SB:** Games Substituted
-   - **G:** Goals Scored
-   - **A:** Assists
-   - **SH:** Shots
-   - **SG:** Shots on Goal
-   - **FC:** Fouls Committed
-   - **FS:** Fouls Suffered
-   - **YC:** Yellow Cards
-   - **RC:** Red Cards
-
-## Instructions & Scope
-
-- You **CAN'T CODE** until your project is planned.
-  
-- Create a `*.gitignore*` file and include it in your repository.
-- You should include a linear regression question(s) on the data.
-
-## Deliverables
-
-- Repository with your workflow + documentation + code. This repository must contain:
-  
-  - README: it is mandatory to present the project. 
-    - What made you decide to do this project?
-    - Objetive 
-    - Used tools 
-    - Workflow
-    - Results and conlusions (this is not so obligatory, it is a more personal decision)
-
-    ⚠️ Readme will be the first thing that people will see from us. A person who knows nothing about this project should be able to read your readme and know what you have done. 
-
-- A SQL Database with the FIFA_MoneyBall, using the learned statements during the last weeks
-
-- A well-commented Jupyter notebook with your analysis.
-
-  ⚠️ Remember, you could use the markdown cells in jupyter!! 
-
-- The final dataset after all cleaning and transformations.
-
-- To send us your work... as always a pull request where in the comments leave us the link to your repo.
-
-
-## Tips & Tricks
-
-- Organize yourself (don't get lost!). Respect deadlines.
-  
-- Ask for help but don't forget that Google is your friend.
-- Define a simple approach first. You never know how the data can betray you. :wink:
-- Document your work.
-- Learn about the problem and what research has been done before you.
-- Before making a graph, think about what you want to represent.
+# ANALYZING RESULTS
+After performing my regression model, I got an r-squared of 0.9304, which means that 93% of the data selected fit the regression model, which means my model is quite good
